@@ -1,8 +1,8 @@
 #pragma once
-#include "Lexer.cpp"
-#include "Parser.cpp"
-#include "Calculator.cpp"
-#include "SymboleTable.cpp"
+#include "Lexer.h"
+#include "Parser.h"
+#include "Calculator.h"
+#include "SymbolTable.h"
 #include <memory>
 #include <string>
 #include <sstream>

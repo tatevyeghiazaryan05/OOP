@@ -1,74 +1,6 @@
+#include "Lexer.h"
 #include <cctype>
 #include <iostream>
-#include <string>
-#include <istream>
-
-enum class TokenType {
-    EndOfExpr,
-    Number,
-    Name,
-    Operator,
-    OpenParen,
-    CloseParen,
-    Assignment,
-    Unknown,
-    Error
-};
-
-struct Token {
-    TokenType type;
-    std::string value;
-    int line;
-    int column;
-
-    Token(TokenType t = TokenType::Unknown, const std::string& v = "", int l = 0, int c = 0)
-        : type(t), value(v), line(l), column(c) {}
-};
-enum class LexerState {
-    Start,
-    InNumber,
-    InName,
-    InString,
-    InOperator,
-    InComment,
-    InEscape
-};
-
-class Lexer {
-private:
-    std::istream& input;
-    LexerState currentState;
-    std::string currentToken;
-    int line;
-    int column;
-    int currentChar;
-    bool isEscape;
-
-    static const int STATE_COUNT = 7;
-    static const int CHAR_TYPE_COUNT = 8;
-
-    enum CharType {
-        Digit,
-        Letter,
-        Whitespace,
-        Operator_,
-        Paren,
-        Quote,
-        Newline_,
-        Other
-    };
-    LexerState transitionMatrix[STATE_COUNT][CHAR_TYPE_COUNT];
-
-    void initializeTransitionMatrix();
-    CharType getCharType(char c);
-    void handleState(char c);
-    Token createToken(TokenType type);
-
-public:
-    Lexer(std::istream& is);
-    Token getNextToken();
-    void reset();
-};
 
 Lexer::Lexer(std::istream& is) : input(is), currentState(LexerState::Start), line(1), column(0), currentChar(0), isEscape(false) {
     initializeTransitionMatrix();
@@ -120,14 +52,14 @@ void Lexer::handleState(char c) {
             if (c == '\\') {
                 isEscape = true;
             } else if (c == '"' && !isEscape) {
-                // end string
+                // End of string
             } else {
                 isEscape = false;
                 currentToken += c;
             }
             break;
         default:
-            if (!isspace(c)) {
+            if (c != ' ' && c != '\n' && c != '\r' && c != '\t') {
                 currentToken += c;
             }
             break;
@@ -198,6 +130,7 @@ Token Lexer::getNextToken() {
         return Token(TokenType::EndOfExpr, "", line, column);
     }
     
+    //Token type
     if (currentState == LexerState::InNumber) {
         return createToken(TokenType::Number);
     } else if (currentState == LexerState::InName) {
