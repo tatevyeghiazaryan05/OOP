@@ -1,55 +1,71 @@
 # ════════════════════════════════════════════════════════════
-#  Makefile — MyLang Compiler
+#  Makefile — MyLang Compiler + VM
 #  RISC-V RV32I 32-bit Classic Architecture
 # ════════════════════════════════════════════════════════════
 
 CXX      = g++
 CXXFLAGS = -std=c++14 -Wall -Wextra
 
-TARGET   = compiler
+# ── Common source files ────────────────────────────────────
+COMMON_SRCS = Token.cpp \
+              Symboltable.cpp \
+              Astnode.cpp \
+              Lexer.cpp \
+              Parser.cpp \
+              Programparser.cpp \
+              Tacinstruction.cpp \
+              Irgenerator.cpp \
+              Optimizer.cpp
 
-SRCS     = main.cpp \
-           Token.cpp \
-           SymbolTable.cpp \
-           ASTNode.cpp \
-           Lexer.cpp \
-           Parser.cpp \
-           ProgramParser.cpp \
-           TACInstruction.cpp \
-           IRGenerator.cpp \
-           Optimizer.cpp \
-           CodeGenerator.cpp \
-           FileCreator.cpp \
-           Memory.cpp \
-           Loader.cpp \
-           Processor.cpp \
-           VM.cpp
+# ── Compiler-specific ──────────────────────────────────────
+COMPILER_SRCS = $(COMMON_SRCS) \
+                Binaryencoder.cpp \
+                Codegenerator.cpp \
+                Filecreator.cpp \
+                main_compiler.cpp
 
-OBJS     = $(SRCS:.cpp=.o)
+# ── VM-specific ────────────────────────────────────────────
+VM_SRCS = $(COMMON_SRCS) \
+          Memory.cpp \
+          Loader.cpp \
+          Processor.cpp \
+          Vm.cpp \
+          main_vm.cpp
 
-# ── Default target ─────────────────────────────────────────
-all: $(TARGET)
+COMPILER_OBJS = $(COMPILER_SRCS:.cpp=.o)
+VM_OBJS       = $(VM_SRCS:.cpp=.o)
 
-# ── Link ───────────────────────────────────────────────────
-$(TARGET): $(OBJS)
+# All .o files for clean
+ALL_OBJS = $(sort $(COMPILER_OBJS) $(VM_OBJS))
+
+# ── Default: build both ────────────────────────────────────
+all: compiler vm
+
+# ── Compiler target ────────────────────────────────────────
+compiler: $(COMPILER_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
-	@echo "✓ Build successful → ./$(TARGET)"
+	@echo "✓ compiler built → ./compiler"
 
-# ── Compile each .cpp → .o ─────────────────────────────────
+# ── VM target ──────────────────────────────────────────────
+vm: $(VM_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^
+	@echo "✓ vm built → ./vm"
+
+# ── Compile .cpp → .o ──────────────────────────────────────
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# ── Run compiler only ──────────────────────────────────────
-run: $(TARGET)
-	./$(TARGET) program.mylang
+# ── Run compiler ───────────────────────────────────────────
+run-compiler: compiler
+	./compiler program.mylang output
 
-# ── Run compiler + VM ──────────────────────────────────────
-run-vm: $(TARGET)
-	./$(TARGET) program.mylang output --run
+# ── Run VM ─────────────────────────────────────────────────
+run-vm: vm
+	./vm program.mylang --verbose
 
 # ── Clean ──────────────────────────────────────────────────
 clean:
-	rm -f $(OBJS) $(TARGET) output output.s output.o
+	rm -f $(ALL_OBJS) compiler vm output output.s output.o output.bin
 	@echo "✓ Cleaned"
 
-.PHONY: all run run-vm clean
+.PHONY: all compiler vm run-compiler run-vm clean
