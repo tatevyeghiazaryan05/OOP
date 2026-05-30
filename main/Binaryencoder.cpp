@@ -7,27 +7,20 @@
 #include <algorithm>
 #include <iomanip>
 
-// ════════════════════════════════════════════════════════════
-//  RISC-V Opcodes (7 bits)
-// ════════════════════════════════════════════════════════════
-static const int OP_LOAD   = 0b0000011;  // lw
-static const int OP_STORE  = 0b0100011;  // sw
-static const int OP_IMM    = 0b0010011;  // addi, xori, sltiu
-static const int OP_REG    = 0b0110011;  // add, sub, mul, div, slt, xor
-static const int OP_BRANCH = 0b1100011;  // beq, bne
-static const int OP_JAL    = 0b1101111;  // jal
-static const int OP_JALR   = 0b1100111;  // jalr
-static const int OP_LUI    = 0b0110111;  // lui
-static const int OP_AUIPC  = 0b0010111;  // auipc
 
-// ════════════════════════════════════════════════════════════
-//  Constructor
-// ════════════════════════════════════════════════════════════
+static const int OP_LOAD   = 0b0000011;  
+static const int OP_STORE  = 0b0100011;  
+static const int OP_IMM    = 0b0010011;  
+static const int OP_REG    = 0b0110011;  
+static const int OP_BRANCH = 0b1100011; 
+static const int OP_JAL    = 0b1101111;  
+static const int OP_JALR   = 0b1100111;  
+static const int OP_LUI    = 0b0110111;  
+static const int OP_AUIPC  = 0b0010111;  
+
+
 BinaryEncoder::BinaryEncoder() {}
 
-// ════════════════════════════════════════════════════════════
-//  STRING HELPERS
-// ════════════════════════════════════════════════════════════
 std::string BinaryEncoder::trim(const std::string& s) const {
     size_t start = s.find_first_not_of(" \t\r\n");
     if (start == std::string::npos) return "";
@@ -44,13 +37,12 @@ std::vector<std::string> BinaryEncoder::splitLines(const std::string& text) cons
     return lines;
 }
 
-// "addi sp, sp, -48" → ["addi", "sp", "sp", "-48"]
 std::vector<std::string> BinaryEncoder::tokenize(const std::string& line) const {
     std::vector<std::string> tokens;
     std::string cur;
 
     for (char c : line) {
-        if (c == '#') break;          // comment
+        if (c == '#') break;          
         if (c == ',' || c == ' ' || c == '\t') {
             if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
         } else {
@@ -69,10 +61,7 @@ bool BinaryEncoder::isDirective(const std::string& s) const {
     return !s.empty() && s[0] == '.';
 }
 
-// ════════════════════════════════════════════════════════════
-//  REGISTER PARSER
-//  "sp" → 2,  "ra" → 1,  "t0" → 5,  "a0" → 10 ...
-// ════════════════════════════════════════════════════════════
+
 int BinaryEncoder::parseReg(const std::string& s) const {
     // ABI names
     if (s == "zero") return 0;
@@ -83,18 +72,15 @@ int BinaryEncoder::parseReg(const std::string& s) const {
     if (s == "fp" || s == "s0") return 8;
     if (s == "s1")   return 9;
 
-    // t0-t2 → x5-x7
     if (s == "t0")   return 5;
     if (s == "t1")   return 6;
     if (s == "t2")   return 7;
 
-    // t3-t6 → x28-x31
     if (s == "t3")   return 28;
     if (s == "t4")   return 29;
     if (s == "t5")   return 30;
     if (s == "t6")   return 31;
 
-    // a0-a7 → x10-x17
     if (s == "a0")   return 10;
     if (s == "a1")   return 11;
     if (s == "a2")   return 12;
@@ -104,20 +90,15 @@ int BinaryEncoder::parseReg(const std::string& s) const {
     if (s == "a6")   return 16;
     if (s == "a7")   return 17;
 
-    // s2-s11 → x18-x27
     if (s == "s2")   return 18;
     if (s == "s3")   return 19;
 
-    // xN format
     if (s.size() > 1 && s[0] == 'x')
         return std::stoi(s.substr(1));
 
     throw std::runtime_error("BinaryEncoder: unknown register '" + s + "'");
 }
 
-// ════════════════════════════════════════════════════════════
-//  IMMEDIATE PARSER — "44", "-48", "0x1C"
-// ════════════════════════════════════════════════════════════
 int BinaryEncoder::parseImm(const std::string& s) const {
     if (s.empty()) return 0;
     if (s.size() > 2 && s[0]=='0' && s[1]=='x')
@@ -125,9 +106,7 @@ int BinaryEncoder::parseImm(const std::string& s) const {
     return std::stoi(s);
 }
 
-// ════════════════════════════════════════════════════════════
-//  OFFSET PARSER — "44(sp)" → imm=44, reg=2
-// ════════════════════════════════════════════════════════════
+
 void BinaryEncoder::parseOffset(const std::string& s, int& imm, int& reg) const {
     size_t lp = s.find('(');
     size_t rp = s.find(')');
@@ -137,11 +116,6 @@ void BinaryEncoder::parseOffset(const std::string& s, int& imm, int& reg) const 
     reg = parseReg(s.substr(lp + 1, rp - lp - 1));
 }
 
-// ════════════════════════════════════════════════════════════
-//  INSTRUCTION FORMAT ENCODERS
-// ════════════════════════════════════════════════════════════
-
-// R-type: funct7 | rs2 | rs1 | funct3 | rd | opcode
 uint32_t BinaryEncoder::encodeR(int opcode, int rd, int funct3,
                                  int rs1, int rs2, int funct7) {
     return ((funct7 & 0x7F) << 25) |
@@ -152,7 +126,6 @@ uint32_t BinaryEncoder::encodeR(int opcode, int rd, int funct3,
            ( opcode & 0x7F);
 }
 
-// I-type: imm[11:0] | rs1 | funct3 | rd | opcode
 uint32_t BinaryEncoder::encodeI(int opcode, int rd, int funct3,
                                  int rs1, int imm) {
     return ((imm    & 0xFFF) << 20) |
@@ -162,7 +135,6 @@ uint32_t BinaryEncoder::encodeI(int opcode, int rd, int funct3,
            ( opcode & 0x7F);
 }
 
-// S-type: imm[11:5] | rs2 | rs1 | funct3 | imm[4:0] | opcode
 uint32_t BinaryEncoder::encodeS(int rs1, int rs2, int funct3, int imm) {
     return (((imm >> 5) & 0x7F) << 25) |
            ((rs2        & 0x1F) << 20) |
@@ -172,7 +144,6 @@ uint32_t BinaryEncoder::encodeS(int rs1, int rs2, int funct3, int imm) {
            OP_STORE;
 }
 
-// B-type: imm[12|10:5] | rs2 | rs1 | funct3 | imm[4:1|11] | opcode
 uint32_t BinaryEncoder::encodeB(int rs1, int rs2, int funct3, int imm) {
     return (((imm >> 12) & 0x1)  << 31) |
            (((imm >>  5) & 0x3F) << 25) |
@@ -184,7 +155,6 @@ uint32_t BinaryEncoder::encodeB(int rs1, int rs2, int funct3, int imm) {
            OP_BRANCH;
 }
 
-// J-type: imm[20|10:1|11|19:12] | rd | opcode
 uint32_t BinaryEncoder::encodeJ(int rd, int imm) {
     return (((imm >> 20) & 0x1)   << 31) |
            (((imm >>  1) & 0x3FF) << 21) |
@@ -194,9 +164,6 @@ uint32_t BinaryEncoder::encodeJ(int rd, int imm) {
            OP_JAL;
 }
 
-// ════════════════════════════════════════════════════════════
-//  INSTRUCTION ENCODERS
-// ════════════════════════════════════════════════════════════
 uint32_t BinaryEncoder::encodeADDI(int rd, int rs1, int imm) {
     return encodeI(OP_IMM, rd, 0b000, rs1, imm);
 }
@@ -252,9 +219,6 @@ uint32_t BinaryEncoder::encodeAUIPC(int rd, int imm) {
     return ((imm & 0xFFFFF) << 12) | ((rd & 0x1F) << 7) | OP_AUIPC;
 }
 
-// ════════════════════════════════════════════════════════════
-//  PSEUDO-INSTRUCTIONS
-// ════════════════════════════════════════════════════════════
 std::vector<uint32_t> BinaryEncoder::encodePseudo(
     const std::string& mnemonic,
     const std::vector<std::string>& ops,
@@ -262,12 +226,9 @@ std::vector<uint32_t> BinaryEncoder::encodePseudo(
 {
     std::vector<uint32_t> result;
 
-    // mv rd, rs1  →  addi rd, rs1, 0
     if (mnemonic == "mv") {
         result.push_back(encodeADDI(parseReg(ops[0]), parseReg(ops[1]), 0));
     }
-    // li rd, imm  →  addi rd, x0, imm  (if imm fits in 12 bits)
-    //             →  lui rd, hi + addi rd, rd, lo  (otherwise)
     else if (mnemonic == "li") {
         int rd  = parseReg(ops[0]);
         int imm = parseImm(ops[1]);
@@ -281,15 +242,12 @@ std::vector<uint32_t> BinaryEncoder::encodePseudo(
             result.push_back(encodeADDI(rd, rd, lo));
         }
     }
-    // neg rd, rs1  →  sub rd, x0, rs1
     else if (mnemonic == "neg") {
         result.push_back(encodeSUB(parseReg(ops[0]), 0, parseReg(ops[1])));
     }
-    // ret  →  jalr x0, ra, 0
     else if (mnemonic == "ret") {
         result.push_back(encodeJALR(0, 1, 0));
     }
-    // j label  →  jal x0, offset
     else if (mnemonic == "j") {
         auto it = labelTable.find(ops[0]);
         if (it == labelTable.end())
@@ -297,7 +255,6 @@ std::vector<uint32_t> BinaryEncoder::encodePseudo(
         int offset = it->second - currentAddr;
         result.push_back(encodeJAL(0, offset));
     }
-    // call label  →  auipc ra, hi + jalr ra, lo(ra)
     else if (mnemonic == "call") {
         auto it = labelTable.find(ops[0]);
         if (it == labelTable.end())
@@ -309,11 +266,9 @@ std::vector<uint32_t> BinaryEncoder::encodePseudo(
         result.push_back(encodeAUIPC(1, hi));
         result.push_back(encodeJALR(1, 1, lo));
     }
-    // seqz rd, rs1  →  sltiu rd, rs1, 1
     else if (mnemonic == "seqz") {
         result.push_back(encodeSLTIU(parseReg(ops[0]), parseReg(ops[1]), 1));
     }
-    // snez rd, rs1  →  sltu rd, x0, rs1
     else if (mnemonic == "snez") {
         result.push_back(encodeSLTU(parseReg(ops[0]), 0, parseReg(ops[1])));
     }
@@ -321,12 +276,9 @@ std::vector<uint32_t> BinaryEncoder::encodePseudo(
     return result;
 }
 
-// ════════════════════════════════════════════════════════════
-//  PASS 1 — Label-nerı scan ev address grancel
-// ════════════════════════════════════════════════════════════
 void BinaryEncoder::buildLabelTable(const std::vector<std::string>& lines) {
     labelTable.clear();
-    int instrAddr = 0;  // byte address
+    int instrAddr = 0;  
 
     for (const std::string& line : lines) {
         if (line.empty() || isDirective(line)) continue;
@@ -335,17 +287,14 @@ void BinaryEncoder::buildLabelTable(const std::vector<std::string>& lines) {
             std::string lbl = line.substr(0, line.size() - 1);
             labelTable[lbl] = instrAddr;
         } else {
-            // Instruction — addr-ы avel аnel
-            // call ev li karogh en 2 instruction linel
             auto tokens = tokenize(line);
             if (tokens.empty()) continue;
             std::string mn = tokens[0];
             if (mn == "li") {
-                // 2 instructions if imm > 12 bits
                 int imm = tokens.size() > 2 ? parseImm(tokens[2]) : 0;
                 instrAddr += (imm >= -2048 && imm <= 2047) ? 4 : 8;
             } else if (mn == "call") {
-                instrAddr += 8;  // auipc + jalr
+                instrAddr += 8;  
             } else {
                 instrAddr += 4;
             }
@@ -353,9 +302,6 @@ void BinaryEncoder::buildLabelTable(const std::vector<std::string>& lines) {
     }
 }
 
-// ════════════════════════════════════════════════════════════
-//  PASS 2 — Hramanner encode аnel
-// ════════════════════════════════════════════════════════════
 std::vector<uint32_t> BinaryEncoder::encodeLines(
     const std::vector<std::string>& lines)
 {
@@ -372,7 +318,6 @@ std::vector<uint32_t> BinaryEncoder::encodeLines(
         std::vector<std::string> ops(tokens.begin() + 1, tokens.end());
 
         try {
-            // ── Pseudo-instructions ────────────────────────
             if (mn=="mv"||mn=="li"||mn=="neg"||mn=="ret"||
                 mn=="j" ||mn=="call"||mn=="seqz"||mn=="snez") {
                 auto encoded = encodePseudo(mn, ops, currentAddr);
@@ -380,7 +325,6 @@ std::vector<uint32_t> BinaryEncoder::encodeLines(
                 continue;
             }
 
-            // ── Real instructions ──────────────────────────
             uint32_t word = 0;
 
             if (mn == "addi") {
@@ -424,7 +368,6 @@ std::vector<uint32_t> BinaryEncoder::encodeLines(
                 word = encodeJALR(parseReg(ops[0]), rs1, imm);
             }
             else {
-                // Unknown instruction → skip (comment, directive)
                 continue;
             }
 
@@ -440,24 +383,18 @@ std::vector<uint32_t> BinaryEncoder::encodeLines(
     return result;
 }
 
-// ════════════════════════════════════════════════════════════
-//  ENCODE — Assembly string → binary file
-// ════════════════════════════════════════════════════════════
 bool BinaryEncoder::encode(const std::string& assembly,
                            const std::string& outFile) {
     std::cout << "\n═══ BINARY ENCODER ═══\n";
 
     auto lines = splitLines(assembly);
 
-    // Pass 1 — Label table
     buildLabelTable(lines);
     std::cout << "  Labels found: " << labelTable.size() << "\n";
 
-    // Pass 2 — Encode
     auto binary = encodeLines(lines);
     std::cout << "  Instructions encoded: " << binary.size() << "\n";
 
-    // Write binary file (little-endian 32-bit words)
     std::ofstream file(outFile, std::ios::binary);
     if (!file.is_open()) {
         std::cerr << "  Error: cannot create '" << outFile << "'\n";
@@ -465,7 +402,6 @@ bool BinaryEncoder::encode(const std::string& assembly,
     }
 
     for (uint32_t word : binary) {
-        // Little-endian write
         uint8_t bytes[4] = {
             uint8_t(word & 0xFF),
             uint8_t((word >> 8)  & 0xFF),
@@ -483,9 +419,6 @@ bool BinaryEncoder::encode(const std::string& assembly,
     return true;
 }
 
-// ════════════════════════════════════════════════════════════
-//  DEBUG — binary hex-ov print
-// ════════════════════════════════════════════════════════════
 void BinaryEncoder::printBinary(const std::vector<uint32_t>& code) const {
     std::cout << "\n  Address  │ Binary (32-bit)          │ Hex\n";
     std::cout << "  ─────────┼──────────────────────────┼────────────\n";
@@ -495,7 +428,6 @@ void BinaryEncoder::printBinary(const std::vector<uint32_t>& code) const {
         std::cout << "  0x" << std::hex << std::setw(4) << std::setfill('0')
                   << (i * 4) << "   │ ";
 
-        // Binary print (32 bits, grouped by 4)
         for (int b = 31; b >= 0; b--) {
             std::cout << ((w >> b) & 1);
             if (b % 4 == 0 && b > 0) std::cout << " ";

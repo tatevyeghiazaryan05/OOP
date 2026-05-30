@@ -6,7 +6,6 @@
 CXX      = g++
 CXXFLAGS = -std=c++14 -Wall -Wextra
 
-# ── Common source files ────────────────────────────────────
 COMMON_SRCS = Token.cpp \
               Symboltable.cpp \
               Astnode.cpp \
@@ -17,14 +16,12 @@ COMMON_SRCS = Token.cpp \
               Irgenerator.cpp \
               Optimizer.cpp
 
-# ── Compiler-specific ──────────────────────────────────────
 COMPILER_SRCS = $(COMMON_SRCS) \
                 Binaryencoder.cpp \
                 Codegenerator.cpp \
                 Filecreator.cpp \
                 main_compiler.cpp
 
-# ── VM-specific ────────────────────────────────────────────
 VM_SRCS = $(COMMON_SRCS) \
           Memory.cpp \
           Loader.cpp \
@@ -35,23 +32,19 @@ VM_SRCS = $(COMMON_SRCS) \
 COMPILER_OBJS = $(COMPILER_SRCS:.cpp=.o)
 VM_OBJS       = $(VM_SRCS:.cpp=.o)
 
-# All .o files for clean
 ALL_OBJS = $(sort $(COMPILER_OBJS) $(VM_OBJS))
 
 # ── Default: build both ────────────────────────────────────
 all: compiler vm
 
-# ── Compiler target ────────────────────────────────────────
 compiler: $(COMPILER_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 	@echo "✓ compiler built → ./compiler"
 
-# ── VM target ──────────────────────────────────────────────
 vm: $(VM_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 	@echo "✓ vm built → ./vm"
 
-# ── Compile .cpp → .o ──────────────────────────────────────
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
